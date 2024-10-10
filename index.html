@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 Gestionnaire de Budget</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .btn-purple-light {
+            background-color: #8a2be2;
+            color: #fff;
+        }
+
+        .btn-purple-light:hover {
+            background-color: #6a0dad;
+        }
+
+        .btn-purple-edit {
+            background-color: #7b68ee;
+            color: #fff;
+        }
+
+        .btn-purple-edit:hover {
+            background-color: #5a4cb0;
+        }
+
+        .btn-yellow {
+            background-color: #ffd700;
+        }
+
+        .btn-yellow:hover {
+            background-color: #ffe135;
+        }
+
+        .btn-red {
+            background-color: #f44336;
+        }
+
+        .btn-red:hover {
+            background-color: #ef5350;
+        }
+
+        .expense-item {
+            margin-bottom: 10px;
+        }
+
+        .dark-mode {
+            background-color: #1e1e2f;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .bg-white {
+            background-color: #2e2e4d;
+        }
+
+        .dark-mode .border-gray-300 {
+            border-color: #0f0f11;
+        }
+
+        .dark-mode .shadow-md {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .dark-mode .text-gray-600 {
+            color: #b0b0b0;
+        }
+
+        .dark-mode .text-green-500 {
+            color: #50fa7b;
+        }
+
+        .dark-mode .text-orange-500 {
+            color: #ffb86c;
+        }
+
+        .dark-mode .text-red-500 {
+            color: #ff5555;
+        }
+    </style>
+</head>
+
+<body x-data="gestionnaireBudget()"
+      :class="{ 'dark-mode': modeSombre, 'bg-white text-gray-800': !modeSombre }"
+      x-init="init()">
+
+    <div class="flex justify-between items-center p-4 border-b border-gray-300">
+        <h1 class="text-4xl font-bold">💰 Gestionnaire de Budget</h1>
+        <button @click="changerModeSombre" class="btn-purple-light font-bold py-2 px-4 rounded">
+            <span x-text="modeSombre ? '☀' : '🌙'"></span>
+        </button>
+    </div>
+
+    <div class="max-w-lg mx-auto p-4">
+        <div class="flex flex-col mb-8">
+            <div class="flex flex-col mb-4">
+                <h2 class="text-2xl font-semibold mb-2">💸 Budget Initial :</h2>
+                <div class="mb-6">
+                    <div class="flex items-center">
+                        <input type="number" id="budget" x-model.number="budget" placeholder="Entrez votre budget"
+                               class="flex-grow p-3 border text-gray-800 border-gray-300 rounded mr-2">
+                        <button @click="changerEditBudget" class="btn-purple-light text-white font-bold py-2 px-4 rounded">
+                            <span x-text="peutModifierBudget ? 'Enregistrer' : 'Modifier'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-semibold mb-2">Ajouter/Modifier une Dépense :</h2>
+                <div class="mb-4">
+                    <input type="text" id="depense" x-model="depense" placeholder="Nom de la dépense"
+                           class="w-full p-3 border border-gray-300 rounded mb-2" maxlength="14">
+                    <input type="number" id="montant" x-model.number="montant" placeholder="Montant"
+                           class="w-full p-3 border text-gray-800 border-gray-300 rounded mb-2">
+                    <select x-model="categorieSelectionnee" class="w-full p-3 border border-gray-300 rounded mb-2 text-gray-800">
+                        <option value="">Sélectionner une catégorie</option>
+                        <option value="loisirs">Loisirs</option>
+                        <option value="nourriture">Nourriture</option>
+                        <option value="transport">Transport</option>
+                        <option value="autres">Autres</option>
+                        <option value="loyer">Loyer</option>
+                        <option value="services">Services</option>
+                        <option value="éducation">Éducation</option>
+                        <option value="santé">Santé</option>
+                    </select>
+                    <button @click="ajouterOuModifierDepense" class="btn-purple-light font-bold py-2 px-4 rounded">
+                        <span x-text="estModification ? 'Modifier Dépense' : 'Ajouter Dépense'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col text-right">
+                <h2 class="text-2xl font-semibold mb-2">Budget Restant :</h2>
+                <p :class="classeBudget" x-text="budget - totalDepenses + ' €'" class="text-lg font-bold mb-4"></p>
+
+                <h2 class="text-2xl font-semibold mb-2">Dépenses :</h2>
+                <ul class="bg-white rounded-lg shadow-md dark:bg-gray-100">
+                    <template x-for="(depense, index) in depenses" :key="index">
+                        <li class="expense-item flex justify-between items-center p-4 h-16 dark:border-gray-700">
+                            <div class="flex-grow flex justify-between">
+                                <span class="font-bold" x-text="depense.nom"></span>
+                                <span class="block text-gray-600" x-text="depense.categorie"></span>
+                            </div>
+                            <span class="text-lg font-semibold border-gray-700 mr-4" x-text="depense.montant + ' €'" style="min-width: 80px;"></span>
+                            <div class="flex">
+                                <button @click="modifierDepense(index)" class="btn-purple-edit font-bold py-1 px-2 rounded">Modifier</button>
+                                <button @click="supprimerDepense(index)" class="btn-red text-white font-bold py-1 px-2 rounded ml-2">Supprimer</button>
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-semibold mb-4">Graphique des Dépenses :</h2>
+        <canvas id="budgetChart" class="w-full h-48 mb-4"></canvas>
+    </div>
+
+    <script>
+        function gestionnaireBudget() {
+            return {
+                modeSombre: false,
+                budget: 2000,
+                depenses: [
+                    { nom: 'Vélo', montant: 1000, categorie: 'loisirs' },
+                    { nom: 'Courses', montant: 300, categorie: 'nourriture' },
+                    { nom: 'Loyer', montant: 800, categorie: 'loyer' },
+                    { nom: 'Médecin', montant: 150, categorie: 'santé' }
+                ],
+                depense: '',
+                montant: 0,
+                categorieSelectionnee: '',
+                estModification: false,
+                indexModification: null,
+                peutModifierBudget: false,
+                graphique: null,
+
+                init() {
+                    this.chargerGraphique();
+                },
+
+                changerModeSombre() {
+                    this.modeSombre = !this.modeSombre;
+                },
+
+                changerEditBudget() {
+                    this.peutModifierBudget = !this.peutModifierBudget;
+                },
+
+                ajouterOuModifierDepense() {
+                    if (this.depense && this.montant && this.categorieSelectionnee) {
+                        if (this.estModification) {
+                            this.depenses[this.indexModification] = {
+                                nom: this.depense,
+                                montant: this.montant,
+                                categorie: this.categorieSelectionnee
+                            };
+                            this.estModification = false;
+                            this.indexModification = null;
+                        } else {
+                            this.depenses.push({
+                                nom: this.depense,
+                                montant: this.montant,
+                                categorie: this.categorieSelectionnee
+                            });
+                        }
+                        this.depense = '';
+                        this.montant = 0;
+                        this.categorieSelectionnee = '';
+                        this.mettreAJourGraphique();
+                    } else {
+                        alert('Veuillez remplir tous les champs.');
+                    }
+                },
+
+                modifierDepense(index) {
+                    this.depense = this.depenses[index].nom;
+                    this.montant = this.depenses[index].montant;
+                    this.categorieSelectionnee = this.depenses[index].categorie;
+                    this.estModification = true;
+                    this.indexModification = index;
+                },
+
+                supprimerDepense(index) {
+                    this.depenses.splice(index, 1);
+                    this.mettreAJourGraphique();
+                },
+
+                get totalDepenses() {
+                    return this.depenses.reduce((somme, dep) => somme + dep.montant, 0);
+                },
+
+                get classeBudget() {
+                    const restant = this.budget - this.totalDepenses;
+                    if (restant > 0) {
+                        return 'text-green-500';
+                    } else if (restant === 0) {
+                        return 'text-orange-500';
+                    } else {
+                        return 'text-red-500';
+                    }
+                },
+
+                chargerGraphique() {
+                    const ctx = document.getElementById('budgetChart').getContext('2d');
+                    this.graphique = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: ['loisirs', 'nourriture', 'transport', 'autres', 'loyer', 'services', 'éducation', 'santé'],
+                            datasets: [{
+                                label: 'Dépenses par catégorie',
+                                data: this.depenses.map(dep => dep.montant),
+                                backgroundColor: [
+                                    'rgba(138, 43, 226, 0.6)',
+                                    'rgba(255, 159, 64, 0.6)',
+                                    'rgba(255, 99, 132, 0.6)',
+                                    'rgba(54, 162, 235, 0.6)',
+                                    'rgba(153, 102, 255, 0.6)',
+                                    'rgba(255, 206, 86, 0.6)',
+                                    'rgba(105, 255, 86, 0.6)',
+                                    'rgba(255, 205, 86, 0.6)'
+                                ],
+                                borderColor: 'rgba(255, 255, 255, 1)',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Répartition des Dépenses'
+                                }
+                            }
+                        }
+                    });
+                },
+
+                mettreAJourGraphique() {
+                    this.graphique.data.datasets[0].data = this.depenses.map(dep => dep.montant);
+                    this.graphique.update();
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
